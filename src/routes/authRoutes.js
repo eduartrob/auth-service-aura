@@ -24,4 +24,8 @@ router.get('/users/public', verifyToken, require('../controllers/authController'
 // Ruta para obtener todos los usuarios (requiere token JWT y rol de administrador)
 router.get('/users', verifyToken, authorizeRole(['admin']), getAllUsers);
 
+router.post('/logout', verifyToken, require('../controllers/authController').logout);
+
+router.post('/delete-account-by-user', verifyToken, require('../controllers/authController').deleteAccountByUser);
+
 module.exports = router;

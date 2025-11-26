@@ -10,7 +10,6 @@ class RabbitMQPublisher {
     this.isConnecting = false;
   }
 
-
   async connect() {
     if (this.isConnecting) return;
     this.isConnecting = true;

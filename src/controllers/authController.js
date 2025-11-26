@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const roleModel = require('../models/roleModel');
 const userModel = require('../models/userModel');
+const crypto = require('crypto');
 
 const register = async (req, res) => {
     const { username, email, password } = req.body;
@@ -124,7 +125,6 @@ const login = async (req, res) => {
     }
 };
 
-const crypto = require('crypto');
 
 const recoverPassword = async (req, res) => {
     const { email } = req.body;
@@ -249,7 +249,6 @@ const getAllUsers = async (req, res) => {
     }
 };
 
-// Obtener todos los usuarios - versión pública (solo info básica)
 const getAllUsersPublic = async (req, res) => {
     try {
         console.log('📋 Obteniendo usuarios públicos...');
@@ -298,6 +297,30 @@ const getAllUsersPublic = async (req, res) => {
     }
 };
 
+const logout = async (req, res) => {
+    try {
+        token = req.headers.authorization.split(' ')[1];
+        
+        res.status(200).json({ message: 'Logged out successfully.' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ message: 'Internal server error during logout.' });
+    }
+};
+
+const deleteAccountByUser = async (req, res) => {
+    try {
+        token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId;
+        await userModel.deleteUser(userId);
+        res.status(200).json({ message: 'Account deleted successfully.' });
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({ message: 'Internal server error during delete account.' });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -306,4 +329,6 @@ module.exports = {
     getProfile,
     getAllUsers,
     getAllUsersPublic,
+    logout,
+    deleteAccountByUser
 };
