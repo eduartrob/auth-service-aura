@@ -5,7 +5,7 @@ const userModel = require('../models/userModel');
 const crypto = require('crypto');
 
 const register = async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, fcmToken } = req.body;
 
     try {
         // Validación de Consistencia: Verificar si el usuario o email ya existen
@@ -59,6 +59,16 @@ const register = async (req, res) => {
             console.error('❌ Error publicando el evento USER_REGISTERED:', eventError);
         }
 
+        // Guardar FCM Token si existe
+        if (fcmToken) {
+            try {
+                await userModel.addDeviceToken(newUser.user_id, fcmToken);
+            } catch (tokenError) {
+                console.error('Error saving FCM token:', tokenError);
+                // No fallamos el registro si falla el guardado del token
+            }
+        }
+
         const token = jwt.sign(
             { id: newUser.user_id, email: newUser.email, role: userRole.role_name }, // Usar el nombre del rol obtenido
             process.env.JWT_SECRET,
@@ -75,7 +85,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
 
     try {
         const user = await userModel.findUserByEmail(email, true); // Incluir el rol
@@ -116,6 +126,15 @@ const login = async (req, res) => {
         } catch (eventError) {
             console.error('❌ Error publicando el evento USER_LOGGED_IN:', eventError);
             // Decide if you want to proceed despite the event error. For a login, it's usually okay.
+        }
+
+        // Guardar FCM Token si existe
+        if (fcmToken) {
+            try {
+                await userModel.addDeviceToken(user.user_id, fcmToken);
+            } catch (tokenError) {
+                console.error('Error saving FCM token:', tokenError);
+            }
         }
         res.status(200).json({ message: 'Logged in successfully.', token });
 
@@ -299,8 +318,13 @@ const getAllUsersPublic = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        token = req.headers.authorization.split(' ')[1];
-        
+        const token = req.headers.authorization.split(' ')[1];
+        const { fcmToken } = req.body;
+
+        if (fcmToken) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            await userModel.removeDeviceToken(decoded.id, fcmToken);
+        }
         res.status(200).json({ message: 'Logged out successfully.' });
     } catch (error) {
         console.error('Logout error:', error);

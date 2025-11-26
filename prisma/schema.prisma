@@ -29,7 +29,21 @@ model User {
   role        Role     @relation(fields: [id_role], references: [id_role], onDelete: Restrict)
   passwordResets PasswordReset[]
 
+  deviceTokens DeviceToken[]
+
   @@map("users")
+}
+
+model DeviceToken {
+  id        Int      @id @default(autoincrement())
+  user_id   String   @db.Uuid
+  token     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, token]) // Prevent duplicate tokens for the same user
+  @@map("device_tokens")
 }
 
 model PasswordReset {

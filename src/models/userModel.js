@@ -142,6 +142,76 @@ const updateUserPassword = async (userId, passwordHash) => {
     });
 };
 
+/**
+ * Agrega un token de dispositivo (FCM) al usuario.
+ * Mantiene un máximo de 3 tokens por usuario, eliminando el más antiguo si es necesario.
+ * @param {string} userId - El ID del usuario.
+ * @param {string} token - El token FCM.
+ * @returns {Promise<void>}
+ */
+const addDeviceToken = async (userId, token) => {
+    if (!token) return;
+
+    // 1. Verificar si el token ya existe para este usuario
+    const existingToken = await prisma.deviceToken.findUnique({
+        where: {
+            user_id_token: {
+                user_id: userId,
+                token: token
+            }
+        }
+    });
+
+    if (existingToken) {
+        return; // El token ya existe, no hacemos nada
+    }
+
+    // 2. Contar cuántos tokens tiene el usuario
+    const tokenCount = await prisma.deviceToken.count({
+        where: { user_id: userId }
+    });
+
+    // 3. Si tiene 3 o más, eliminar el más antiguo
+    if (tokenCount >= 3) {
+        const oldestToken = await prisma.deviceToken.findFirst({
+            where: { user_id: userId },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        if (oldestToken) {
+            await prisma.deviceToken.delete({
+                where: { id: oldestToken.id }
+            });
+        }
+    }
+
+    // 4. Crear el nuevo token
+    await prisma.deviceToken.create({
+        data: {
+            user_id: userId,
+            token: token
+        }
+    });
+};
+
+/**
+ * Elimina un token de dispositivo específico.
+ * @param {string} userId - El ID del usuario.
+ * @param {string} token - El token FCM a eliminar.
+ * @returns {Promise<void>}
+ */
+const removeDeviceToken = async (userId, token) => {
+    if (!token) return;
+
+    // Usamos deleteMany para evitar errores si el token no existe
+    await prisma.deviceToken.deleteMany({
+        where: {
+            user_id: userId,
+            token: token
+        }
+    });
+};
+
 module.exports = {
     findUserByEmail,
     findUserByUsername,
@@ -153,4 +223,6 @@ module.exports = {
     markResetTokenAsUsed,
     invalidatePreviousResetTokens,
     updateUserPassword,
+    addDeviceToken,
+    removeDeviceToken,
 };
