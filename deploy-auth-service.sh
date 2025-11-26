@@ -44,10 +44,29 @@ AUTH_DB_PORT="5432"
 echo -e "\n--- 📝 ${YELLOW}Asegurando archivo de configuración .env...${NC} ---"
 cd "$AUTH_SERVICE_DIR"
 
+# Función para actualizar o agregar una variable en el .env
+update_env() {
+    local key=$1
+    local val=$2
+    local file=".env"
+    if grep -q "^${key}=" "$file"; then
+        # Usa un delimitador diferente (|) para evitar conflictos con valores que contengan /
+        sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+    else
+        echo "${key}=${val}" >> "$file"
+    fi
+}
+
+# Función para leer una variable del .env
+read_env() {
+    local key=$1
+    local file=".env"
+    # Obtiene el valor después del primer '='
+    grep "^${key}=" "$file" | cut -d '=' -f2-
+}
+
 if [ ! -f .env ]; then
-    echo "Archivo .env no encontrado. Creando desde .env.example y generando credenciales..."
-    # Asumimos que existe un .env.example con las claves AUTH_DB_USER, etc.
-    # Si no, lo creamos.
+    echo "Archivo .env no encontrado. Creando desde .env.example..."
     if [ ! -f .env.example ]; then
         cat > .env.example << EOF
 # Service Port
@@ -63,44 +82,71 @@ RABBITMQ_URL=amqp://admin:admin@localhost:5672
 EOF
     fi
     cp .env.example .env
-
-    # Generar credenciales únicas y seguras
-    AUTH_DB_USER_VAL="auth_service_user"
-    AUTH_DB_PASS_VAL=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9')
-    AUTH_DB_NAME_VAL="auth_service_db"
-    JWT_SECRET_VAL=$(openssl rand -base64 32)
-
-    # Actualizar el .env con las credenciales generadas
-    sed -i "s/^${AUTH_DB_USER_VAR}=.*/${AUTH_DB_USER_VAR}=${AUTH_DB_USER_VAL}/" .env
-    sed -i "s/^${AUTH_DB_PASS_VAR}=.*/${AUTH_DB_PASS_VAR}=${AUTH_DB_PASS_VAL}/" .env
-    sed -i "s/^${AUTH_DB_NAME_VAR}=.*/${AUTH_DB_NAME_VAR}=${AUTH_DB_NAME_VAL}/" .env
-    sed -i "s/^JWT_SECRET=.*/JWT_SECRET=${JWT_SECRET_VAL}/" .env
-    echo -e "${GREEN}✅ Archivo .env creado con credenciales únicas y seguras.${NC}"
+    echo -e "${GREEN}✅ Archivo .env creado.${NC}"
 else
-    echo -e "${GREEN}✅ Archivo .env ya existe. Usando configuración existente.${NC}"
-    # VERIFICACIÓN ADICIONAL: Si el .env existe pero las variables están vacías, las generamos.
-    if [ -z "$(grep "^${AUTH_DB_USER_VAR}=" .env | cut -d '=' -f2)" ]; then
-        echo "Detectadas credenciales de BD vacías en .env. Generando nuevas..."
-        AUTH_DB_USER_VAL="auth_service_user"
-        AUTH_DB_PASS_VAL=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9')
-        AUTH_DB_NAME_VAL="auth_service_db"
-
-        sed -i "s/^${AUTH_DB_USER_VAR}=.*/${AUTH_DB_USER_VAR}=${AUTH_DB_USER_VAL}/" .env
-        sed -i "s/^${AUTH_DB_PASS_VAR}=.*/${AUTH_DB_PASS_VAR}=${AUTH_DB_PASS_VAL}/" .env
-        sed -i "s/^${AUTH_DB_NAME_VAR}=.*/${AUTH_DB_NAME_VAR}=${AUTH_DB_NAME_VAL}/" .env
-        echo -e "${GREEN}✅ Credenciales de BD actualizadas en .env.${NC}"
-    fi
+    echo -e "${GREEN}✅ Archivo .env ya existe.${NC}"
 fi
 
-# Cargar variables de forma segura directamente desde el archivo .env
-AUTH_DB_USER=$(grep "^${AUTH_DB_USER_VAR}=" .env | cut -d '=' -f2)
-AUTH_DB_PASSWORD=$(grep "^${AUTH_DB_PASS_VAR}=" .env | cut -d '=' -f2)
-AUTH_DB_NAME=$(grep "^${AUTH_DB_NAME_VAR}=" .env | cut -d '=' -f2)
+# Verificar y generar credenciales si faltan
+echo "Verificando credenciales en .env..."
 
-# Reconstruir DATABASE_URL con los valores cargados y actualizar el .env
-# Esto asegura que la DATABASE_URL siempre esté sincronizada con las otras variables
+# Leer valores actuales
+AUTH_DB_USER=$(read_env "$AUTH_DB_USER_VAR")
+AUTH_DB_PASSWORD=$(read_env "$AUTH_DB_PASS_VAR")
+AUTH_DB_NAME=$(read_env "$AUTH_DB_NAME_VAR")
+JWT_SECRET=$(read_env "JWT_SECRET")
+
+CHANGES_MADE=false
+
+if [ -z "$AUTH_DB_USER" ]; then
+    echo "Generando AUTH_DB_USER..."
+    update_env "$AUTH_DB_USER_VAR" "auth_service_user"
+    CHANGES_MADE=true
+fi
+
+if [ -z "$AUTH_DB_PASSWORD" ]; then
+    echo "Generando AUTH_DB_PASSWORD..."
+    PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9')
+    update_env "$AUTH_DB_PASS_VAR" "$PASS"
+    CHANGES_MADE=true
+fi
+
+if [ -z "$AUTH_DB_NAME" ]; then
+    echo "Generando AUTH_DB_NAME..."
+    update_env "$AUTH_DB_NAME_VAR" "auth_service_db"
+    CHANGES_MADE=true
+fi
+
+if [ -z "$JWT_SECRET" ]; then
+    echo "Generando JWT_SECRET..."
+    SECRET=$(openssl rand -base64 32)
+    update_env "JWT_SECRET" "$SECRET"
+    CHANGES_MADE=true
+fi
+
+if [ "$CHANGES_MADE" = true ]; then
+    echo -e "${GREEN}✅ Credenciales faltantes generadas y actualizadas en .env.${NC}"
+else
+    echo -e "${GREEN}✅ Todas las credenciales ya estaban configuradas.${NC}"
+fi
+
+# Recargar variables para asegurar que tenemos los valores finales
+AUTH_DB_USER=$(read_env "$AUTH_DB_USER_VAR")
+AUTH_DB_PASSWORD=$(read_env "$AUTH_DB_PASS_VAR")
+AUTH_DB_NAME=$(read_env "$AUTH_DB_NAME_VAR")
+AUTH_DB_HOST="localhost"
+AUTH_DB_PORT="5432"
+
+# Validar que no estén vacías antes de continuar
+if [ -z "$AUTH_DB_USER" ] || [ -z "$AUTH_DB_NAME" ]; then
+    echo -e "${RED}❌ Error: No se pudieron establecer las credenciales de base de datos.${NC}"
+    echo "Por favor, revisa tu archivo .env manualmente o elimínalo para regenerarlo."
+    exit 1
+fi
+
+# Reconstruir DATABASE_URL y actualizar
 DATABASE_URL="postgresql://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@${AUTH_DB_HOST}:${AUTH_DB_PORT}/${AUTH_DB_NAME}?schema=public"
-sed -i "s|^DATABASE_URL=.*|DATABASE_URL=\"${DATABASE_URL}\"|" .env
+update_env "DATABASE_URL" "$DATABASE_URL"
 echo "URL de la base de datos actualizada en .env"
 
 # --- 3. Verificación e Instalación de Dependencias del Sistema ---
