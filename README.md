@@ -78,29 +78,29 @@ JWT_SECRET="tu_clave_secreta_muy_larga_y_segura_aqui"
 PORT=3001
 ```
 
-### 2. Despliegue Automatizado (Recomendado)
+### 2. Configuración de Desarrollo (Recomendado)
 
-El script `deploy-auth-service.sh` automatiza toda la configuración en un servidor Ubuntu.
+El script `setup-dev.sh` automatiza toda la configuración para el entorno de desarrollo local.
 
 Dar permisos de ejecución al script:
 
 ```bash
-chmod +x deploy-auth-service.sh
+chmod +x scripts/setup-dev.sh
 ```
 
 Ejecutar el script:
 
 ```bash
-./deploy-auth-service.sh
+./scripts/setup-dev.sh
 ```
 
 Este script se encargará de:
 
--   Instalar **Node.js** y **PostgreSQL** si no están presentes.
+-   Verificar requisitos (Node.js, PostgreSQL).
+-   Generar el archivo `.env`.
 -   Crear el usuario y la base de datos `aura_auth_db`.
--   Instalar las dependencias del proyecto con `npm install`.
--   Aplicar las migraciones de Prisma para crear las tablas (`npx prisma migrate deploy`).
--   Insertar los roles iniciales (`'admin'`, `'user'`).
+-   Instalar las dependencias del proyecto.
+-   Aplicar las migraciones de Prisma y crear roles iniciales.
 
 ### 3. Ejecución del Servicio
 
