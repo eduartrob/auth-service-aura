@@ -11,6 +11,9 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Deploy migrations
+RUN npx prisma migrate deploy
+
 EXPOSE 3001
 
 CMD [ "npm", "start" ]
