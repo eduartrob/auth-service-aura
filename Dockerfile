@@ -11,9 +11,11 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Deploy migrations
-RUN npx prisma migrate deploy
+# Copy entrypoint script
+COPY scripts/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3001
 
+ENTRYPOINT ["./entrypoint.sh"]
 CMD [ "npm", "start" ]
