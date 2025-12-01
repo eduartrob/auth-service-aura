@@ -8,7 +8,7 @@ const helmet = require('helmet'); // Para seguridad básica
 const cors = require('cors'); // Para permitir peticiones de otros orígenes
 const morgan = require('morgan'); // Para logging de peticiones
 const authRoutes = require('./routes/authRoutes');
-const { RabbitMQPublisher } = require('./src/infraestructure/providers/rabbit_publisher');
+const { RabbitMQPublisher } = require('./infraestructure/providers/rabbit_publisher');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
