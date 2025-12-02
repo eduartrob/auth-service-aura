@@ -336,7 +336,7 @@ const deleteAccountByUser = async (req, res) => {
     try {
         token = req.headers.authorization.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.userId;
+        const userId = decoded.id;
         await userModel.deleteUser(userId);
         res.status(200).json({ message: 'Account deleted successfully.' });
     } catch (error) {

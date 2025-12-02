@@ -212,6 +212,18 @@ const removeDeviceToken = async (userId, token) => {
     });
 };
 
+
+/**
+ * Elimina un usuario por su ID.
+ * @param {string} userId - El ID del usuario a eliminar.
+ * @returns {Promise<Object>} El usuario eliminado.
+ */
+const deleteUser = async (userId) => {
+    return prisma.user.delete({
+        where: { user_id: userId },
+    });
+};
+
 module.exports = {
     findUserByEmail,
     findUserByUsername,
@@ -225,4 +237,5 @@ module.exports = {
     updateUserPassword,
     addDeviceToken,
     removeDeviceToken,
+    deleteUser,
 };
