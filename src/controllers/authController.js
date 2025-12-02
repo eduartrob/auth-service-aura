@@ -119,6 +119,7 @@ const login = async (req, res) => {
                     username: user.username,
                     email: user.email,
                     role: user.role.role_name,
+                    fcmToken: fcmToken, // Incluir token para notificaciones
                     loginAt: new Date()
                 }
             };
@@ -334,10 +335,38 @@ const logout = async (req, res) => {
 
 const deleteAccountByUser = async (req, res) => {
     try {
-        token = req.headers.authorization.split(' ')[1];
+        const token = req.headers.authorization.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.id;
+
+        // 1. Obtener datos del usuario ANTES de borrarlo (para el email)
+        const user = await userModel.findUserById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        // 2. Borrar usuario
         await userModel.deleteUser(userId);
+
+        // 3. Publicar evento USER_DELETED
+        try {
+            const rabbitPublisher = req.app.get('rabbitPublisher');
+            const event = {
+                eventType: 'USER_DELETED',
+                occurredOn: new Date(),
+                payload: {
+                    userId: user.user_id,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role ? user.role.role_name : 'user'
+                }
+            };
+            await rabbitPublisher.publish('auth.user.deleted', event);
+            console.log(`✅ Evento USER_DELETED publicado para ${user.email}`);
+        } catch (eventError) {
+            console.error('❌ Error publicando el evento USER_DELETED:', eventError);
+        }
+
         res.status(200).json({ message: 'Account deleted successfully.' });
     } catch (error) {
         console.error('Delete account error:', error);
