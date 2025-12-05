@@ -1,3 +1,4 @@
+
 require("dotenv").config();
 
 console.log("RABBITMQ_URL =", process.env.RABBITMQ_URL);
