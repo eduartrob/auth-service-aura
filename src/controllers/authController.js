@@ -154,7 +154,8 @@ const recoverPassword = async (req, res) => {
         if (!user) {
             // Siempre responder igual para no revelar si el email existe
             return res.status(200).json({
-                message: 'If the email exists, recovery instructions were sent.'
+                message: 'If the email exists, recovery instructions were sent.',
+                success: true  // Frontend needs this to show success dialog
             });
         }
 
@@ -172,9 +173,10 @@ const recoverPassword = async (req, res) => {
             expiresAt
         });
 
-        // URL para el frontend (no la API directamente)
-        // En producción esto debería venir de variable de entorno FRONTEND_URL
-        const resetUrl = `http://localhost:3001/reset-password?token=${resetToken}`;
+        // URL para el frontend/app móvil (deeplink)
+        // En producción usar PASSWORD_RESET_BASE_URL desde docker-compose.yml
+        const baseUrl = process.env.PASSWORD_RESET_BASE_URL || 'http://localhost:3001';
+        const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
         // --- Publicación del Evento de Dominio ---
         try {
@@ -184,6 +186,7 @@ const recoverPassword = async (req, res) => {
                 occurredOn: new Date(),
                 payload: {
                     userId: user.user_id,
+                    username: user.username,  // ✅ Added for email personalization
                     email: user.email,
                     resetUrl,
                     expiresAt
@@ -191,11 +194,20 @@ const recoverPassword = async (req, res) => {
             };
             await rabbitPublisher.publish('auth.password.reset_requested', event);
 
+            // ✅ Include username in response for app to display
             res.status(200).json({
-                message: 'Password recovery instructions sent to email.'
+                message: 'Password recovery instructions sent to email.',
+                success: true,
+                username: user.username  // ✅ Added for success dialog
             });
         } catch (eventError) {
             console.error('❌ Error publicando evento PASSWORD_RESET_REQUESTED:', eventError);
+            // Still respond success even if RabbitMQ fails
+            res.status(200).json({
+                message: 'Password recovery instructions sent to email.',
+                success: true,
+                username: user.username
+            });
         }
     } catch (error) {
         console.error('Recover password error:', error);
