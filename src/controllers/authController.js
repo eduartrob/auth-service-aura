@@ -72,7 +72,7 @@ const register = async (req, res) => {
         const token = jwt.sign(
             { id: newUser.user_id, email: newUser.email, role: userRole.role_name }, // Usar el nombre del rol obtenido
             process.env.JWT_SECRET,
-            { expiresIn: '1h' } // Token expira en 1 hora
+            { expiresIn: '30d' } // Token expira en 30 días para sesión persistente
         );
 
         res.status(201).json({ message: 'User registered successfully.', user: newUser, token });
@@ -103,7 +103,7 @@ const login = async (req, res) => {
         const token = jwt.sign(
             { id: user.user_id, email: user.email, role: user.role.role_name },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' } // Token expira en 1 hora
+            { expiresIn: '30d' } // Token expira en 30 días para sesión persistente
         );
 
         // --- Publicación del Evento de Dominio ---
