@@ -69,10 +69,16 @@ const register = async (req, res) => {
             }
         }
 
+        // Include username in JWT for notifications
         const token = jwt.sign(
-            { id: newUser.user_id, email: newUser.email, role: userRole.role_name }, // Usar el nombre del rol obtenido
+            {
+                id: newUser.user_id,
+                email: newUser.email,
+                username: newUser.username,
+                role: userRole.role_name
+            },
             process.env.JWT_SECRET,
-            { expiresIn: '30d' } // Token expira en 30 días para sesión persistente
+            { expiresIn: '30d' }
         );
 
         res.status(201).json({ message: 'User registered successfully.', user: newUser, token });
@@ -99,11 +105,16 @@ const login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials.' });
         }
 
-        // Generar token JWT
+        // Include username in JWT for notifications
         const token = jwt.sign(
-            { id: user.user_id, email: user.email, role: user.role.role_name },
+            {
+                id: user.user_id,
+                email: user.email,
+                username: user.username,
+                role: user.role.role_name
+            },
             process.env.JWT_SECRET,
-            { expiresIn: '30d' } // Token expira en 30 días para sesión persistente
+            { expiresIn: '30d' }
         );
 
         // --- Publicación del Evento de Dominio ---
