@@ -16,7 +16,7 @@ COPY package*.json ./
 # Install dependencies with BuildKit cache mount
 # Uses cached packages from previous builds when possible
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --prefer-offline
+    npm install
 
 COPY . .
 
